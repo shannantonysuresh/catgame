@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<title>Has To Be A Cat</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-top:#20242f;
+    --bg-bottom:#14161d;
+    --card:#262a36;
+    --ink:#eef0f5;
+    --muted:#9aa2b2;
+    --accent:#4fd18b;
+    --danger:#e34848;
+    --pill:#2f3444;
+    --pill-border:#3b4152;
+    --shadow: 0 10px 30px rgba(0,0,0,0.35);
+  }
+  *{ box-sizing: border-box; }
+  html,body{ overflow-anchor:none; }
+  body{
+    margin:0;
+    min-height:100vh;
+    font-family:'Poppins', system-ui, -apple-system, sans-serif;
+    background: radial-gradient(circle at 50% -10%, var(--bg-top), var(--bg-bottom));
+    color: var(--ink);
+    display:flex;
+    justify-content:center;
+    padding: 18px 12px 40px;
+  }
+  .app{
+    width:100%;
+    max-width: 560px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:14px;
+  }
+  header{
+    width:100%;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:12px;
+  }
+  .title{
+    margin:6px 0 0;
+    font-family:'Fredoka', system-ui, sans-serif;
+    font-weight:800;
+    font-size: clamp(30px, 8vw, 46px);
+    letter-spacing: 1px;
+    color:#fff;
+    -webkit-text-stroke: 2.5px #232733;
+    text-stroke: 2.5px #232733;
+    paint-order: stroke fill;
+    filter: drop-shadow(3px 4px 0 #232733);
+    text-align:center;
+    line-height:1.05;
+    user-select:none;
+  }
+  .badges{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    justify-content:center;
+    padding: 0 4px;
+  }
+  .badge{
+    background: var(--pill);
+    border: 1px solid var(--pill-border);
+    color: var(--muted);
+    font-weight:700;
+    font-size: 12.5px;
+    padding: 7px 13px;
+    border-radius: 999px;
+    box-shadow: 0 2px 6px rgba(30,40,60,0.05);
+    white-space:nowrap;
+  }
+  .status{
+    width:100%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap: 26px;
+    background: var(--card);
+    border-radius: 16px;
+    padding: 10px 20px;
+    box-shadow: var(--shadow);
+  }
+  .cat-count{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-weight:800;
+    font-size: 20px;
+    color: var(--accent);
+  }
+  .cat-count .icon{ font-size:22px; }
+  .lives{ display:flex; gap:4px; }
+  .heart{ font-size:22px; transition: transform 0.25s ease; }
+  .heart.lost{ filter: grayscale(1) opacity(0.35); transform: scale(0.9); }
+
+  .board-wrap{
+    width:100%;
+    background: var(--card);
+    border-radius: 20px;
+    padding: 12px;
+    box-shadow: var(--shadow);
+  }
+  .board{
+    width:100%;
+    aspect-ratio: 1 / 1;
+    display:grid;
+    grid-template-columns: repeat(8, 1fr);
+    grid-template-rows: repeat(8, 1fr);
+    gap: 5px;
+    border-radius: 12px;
+    overflow:hidden;
+    transition: filter 0.2s ease;
+  }
+  .board.locked{ pointer-events:none; }
+  .cell{
+    position:relative;
+    border-radius: 9px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    user-select:none;
+    transition: transform 0.12s ease, filter 0.12s ease;
+  }
+  .cell:hover{ filter: brightness(1.04); }
+  .cell:active{ transform: scale(0.94); }
+  .cell .cat-emoji{
+    font-size: clamp(16px, 4.6vw, 28px);
+    line-height:1;
+    filter: drop-shadow(0 2px 2px rgba(0,0,0,0.18));
+  }
+  .cell .cat-emoji.pop{
+    animation: popIn 0.32s cubic-bezier(.34,1.56,.64,1);
+  }
+  .cell .mark{
+    font-size: clamp(14px, 3.6vw, 20px);
+    font-weight:800;
+    color: rgba(255,255,255,0.85);
+    text-shadow: 0 1px 3px rgba(0,0,0,0.55);
+  }
+  @keyframes popIn{
+    0%{ transform: scale(0.1); opacity:0.2; }
+    60%{ transform: scale(1.25); opacity:1; }
+    100%{ transform: scale(1); }
+  }
+  .cell.conflict::after{
+    content:'';
+    position:absolute;
+    inset:0;
+    border-radius: inherit;
+    background: rgba(224, 50, 50, 0.55);
+    animation: flashPulse 0.6s ease;
+  }
+  @keyframes flashPulse{
+    0%{ opacity:0; }
+    20%{ opacity:1; }
+    50%{ opacity:0.25; }
+    75%{ opacity:1; }
+    100%{ opacity:0; }
+  }
+
+  .newgame-btn{
+    font-family:'Poppins', sans-serif;
+    font-weight:800;
+    font-size:15px;
+    color:#fff;
+    background: linear-gradient(135deg, #3fbf8f, #2fae76);
+    border:none;
+    padding: 12px 26px;
+    border-radius: 999px;
+    cursor:pointer;
+    box-shadow: 0 8px 18px rgba(47,174,118,0.35);
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+  }
+  .newgame-btn:hover{ transform: translateY(-1px); box-shadow: 0 10px 22px rgba(47,174,118,0.42); }
+  .newgame-btn:active{ transform: translateY(0px) scale(0.97); }
+
+  .overlay{
+    position:fixed;
+    inset:0;
+    background: rgba(20,24,32,0.55);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index: 50;
+    animation: fadeIn 0.25s ease;
+  }
+  .overlay[hidden]{ display:none; }
+  @keyframes fadeIn{ from{ opacity:0; } to{ opacity:1; } }
+  .overlay-card{
+    background: var(--card);
+    border-radius: 22px;
+    padding: 32px 30px;
+    max-width: 340px;
+    width: 90%;
+    text-align:center;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.35);
+    animation: cardPop 0.35s cubic-bezier(.34,1.56,.64,1);
+    position:relative;
+    overflow:hidden;
+  }
+  @keyframes cardPop{
+    0%{ transform: scale(0.7); opacity:0; }
+    100%{ transform: scale(1); opacity:1; }
+  }
+  .overlay-card h2{
+    font-family:'Fredoka', sans-serif;
+    font-size: 28px;
+    margin: 0 0 8px;
+  }
+  .overlay-card p{
+    color: var(--muted);
+    font-weight:600;
+    margin: 0 0 22px;
+  }
+  .confetti-piece{
+    position:absolute;
+    top:-10px;
+    width:8px;
+    height:14px;
+    border-radius:2px;
+    animation: confettiFall linear forwards;
+    pointer-events:none;
+  }
+  @keyframes confettiFall{
+    from{ transform: translateY(-20px) rotate(0deg); opacity:1; }
+    to{ transform: translateY(420px) rotate(540deg); opacity:0; }
+  }
+
+  @media (max-width: 420px){
+    .status{ gap:16px; padding: 9px 14px; }
+    .cat-count{ font-size:17px; }
+    .heart{ font-size:19px; }
+    .badge{ font-size: 11.5px; padding: 6px 10px; }
+  }
+</style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1 class="title">HAS TO BE A CAT</h1>
+      <div class="badges">
+        <span class="badge">1 Cat per color</span>
+        <span class="badge">1 Cat per row &amp; column</span>
+        <span class="badge">Cats cannot touch</span>
+      </div>
+      <div class="status">
+        <div class="cat-count"><span class="icon">🐱</span><span><span id="catCount">0</span>/8</span></div>
+        <div class="lives" id="lives"></div>
+      </div>
+    </header>
+
+    <div class="board-wrap">
+      <div class="board" id="board"></div>
+    </div>
+
+    <button class="newgame-btn" id="newGameBtn">New Game</button>
+  </div>
+
+  <div class="overlay" id="winOverlay" hidden>
+    <div class="overlay-card">
+      <h2>🎉 Solved!</h2>
+      <p>All 8 cats found their perfect spot.</p>
+      <button class="newgame-btn" id="winNewGame">New Game</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="loseOverlay" hidden>
+    <div class="overlay-card">
+      <h2>💔 Game Over</h2>
+      <p>Out of lives — the cats scattered.</p>
+      <button class="newgame-btn" id="loseNewGame">New Game</button>
+    </div>
+  </div>
+
+<script>
+(function(){
+  'use strict';
+
+  var N = 8;
+  var PALETTE = [
+    '#1F7A72', // deep teal
+    '#5A4F9E', // deep lavender
+    '#8C2F5C', // deep magenta
+    '#2B6F9E', // deep sky blue
+    '#3D7A3A', // deep green
+    '#123D22', // dark green
+    '#B4841F', // deep mustard
+    '#5E3B8C'  // deep purple
+  ];
+
+  var board, regionOf, regionColors;
+  var lives, catCount, gameEnded, conflictLock;
+  var cellEls = [];
+  var boardEl = document.getElementById('board');
+  var catCountEl = document.getElementById('catCount');
+  var livesEl = document.getElementById('lives');
+  var winOverlay = document.getElementById('winOverlay');
+  var loseOverlay = document.getElementById('loseOverlay');
+
+  function shuffle(arr){
+    for (var i = arr.length - 1; i > 0; i--){
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
+    }
+    return arr;
+  }
+
+  function isValidSolution(points){
+    for (var i = 0; i < points.length; i++){
+      for (var j = i + 1; j < points.length; j++){
+        var dr = Math.abs(points[i].r - points[j].r);
+        var dc = Math.abs(points[i].c - points[j].c);
+        if (dr <= 1 && dc <= 1) return false;
+      }
+    }
+    return true;
+  }
+
+  function generateSolution(){
+    var points, attempts = 0;
+    do {
+      var cols = shuffle([0,1,2,3,4,5,6,7]);
+      points = cols.map(function(c, r){ return { r: r, c: c }; });
+      attempts++;
+    } while (!isValidSolution(points) && attempts < 5000);
+    return points;
+  }
+
+  function growRegions(points){
+    var region = [];
+    for (var r = 0; r < N; r++){ region.push(new Array(N).fill(-1)); }
+    points.forEach(function(p, i){ region[p.r][p.c] = i; });
+
+    var frontier = [];
+    function pushNeighbors(r, c, reg){
+      var deltas = [[-1,0],[1,0],[0,-1],[0,1]];
+      for (var k = 0; k < deltas.length; k++){
+        var nr = r + deltas[k][0], nc = c + deltas[k][1];
+        if (nr >= 0 && nr < N && nc >= 0 && nc < N && region[nr][nc] === -1){
+          frontier.push({ r: nr, c: nc, region: reg });
+        }
+      }
+    }
+    points.forEach(function(p, i){ pushNeighbors(p.r, p.c, i); });
+
+    while (frontier.length > 0){
+      var idx = Math.floor(Math.random() * frontier.length);
+      var item = frontier.splice(idx, 1)[0];
+      if (region[item.r][item.c] !== -1) continue;
+      region[item.r][item.c] = item.region;
+      pushNeighbors(item.r, item.c, item.region);
+    }
+    return region;
+  }
+
+  function findConflicts(r, c){
+    var conflicts = [];
+    for (var rr = 0; rr < N; rr++){
+      for (var cc = 0; cc < N; cc++){
+        if (rr === r && cc === c) continue;
+        if (board[rr][cc] !== 'cat') continue;
+        var conflict = false;
+        if (rr === r) conflict = true;
+        else if (cc === c) conflict = true;
+        else if (regionOf[rr][cc] === regionOf[r][c]) conflict = true;
+        else if (Math.abs(rr - r) <= 1 && Math.abs(cc - c) <= 1) conflict = true;
+        if (conflict) conflicts.push([rr, cc]);
+      }
+    }
+    return conflicts;
+  }
+
+  function setCellContent(r, c, animate){
+    var el = cellEls[r][c];
+    el.classList.remove('has-x', 'has-cat');
+    el.innerHTML = '';
+    var state = board[r][c];
+    if (state === 'x'){
+      el.classList.add('has-x');
+      var mark = document.createElement('span');
+      mark.className = 'mark';
+      mark.textContent = '✕';
+      el.appendChild(mark);
+    } else if (state === 'cat'){
+      el.classList.add('has-cat');
+      var cat = document.createElement('span');
+      cat.className = 'cat-emoji' + (animate ? ' pop' : '');
+      cat.textContent = '🐱';
+      el.appendChild(cat);
+    }
+  }
+
+  function updateHud(){
+    catCountEl.textContent = catCount;
+    livesEl.innerHTML = '';
+    for (var i = 0; i < 3; i++){
+      var span = document.createElement('span');
+      span.className = 'heart' + (i < lives ? '' : ' lost');
+      span.textContent = i < lives ? '❤️' : '🤍';
+      livesEl.appendChild(span);
+    }
+  }
+
+  function handleCatPlaced(r, c){
+    catCount++;
+    updateHud();
+    var conflicts = findConflicts(r, c);
+    if (conflicts.length > 0){
+      conflictLock = true;
+      boardEl.classList.add('locked');
+      var cells = [[r, c]].concat(conflicts);
+      cells.forEach(function(pos){ cellEls[pos[0]][pos[1]].classList.add('conflict'); });
+      setTimeout(function(){
+        cells.forEach(function(pos){ cellEls[pos[0]][pos[1]].classList.remove('conflict'); });
+        board[r][c] = 'empty';
+        setCellContent(r, c, false);
+        catCount--;
+        lives--;
+        updateHud();
+        conflictLock = false;
+        boardEl.classList.remove('locked');
+        if (lives <= 0){
+          gameEnded = true;
+          showLose();
+        }
+      }, 620);
+    } else if (catCount === 8){
+      gameEnded = true;
+      setTimeout(showWin, 250);
+    }
+  }
+
+  function cellClick(r, c){
+    if (gameEnded || conflictLock) return;
+    var state = board[r][c];
+    if (state === 'empty'){
+      board[r][c] = 'cat';
+      setCellContent(r, c, true);
+      handleCatPlaced(r, c);
+    } else if (state === 'cat'){
+      board[r][c] = 'x';
+      setCellContent(r, c, false);
+      catCount--;
+      updateHud();
+    } else if (state === 'x'){
+      board[r][c] = 'empty';
+      setCellContent(r, c, false);
+    }
+  }
+
+  function buildBoardDOM(){
+    boardEl.innerHTML = '';
+    boardEl.classList.remove('locked');
+    cellEls = [];
+    for (var r = 0; r < N; r++){
+      var row = [];
+      for (var c = 0; c < N; c++){
+        var el = document.createElement('div');
+        el.className = 'cell';
+        el.style.backgroundColor = regionColors[regionOf[r][c]];
+        (function(rr, cc){
+          el.addEventListener('click', function(){ cellClick(rr, cc); });
+        })(r, c);
+        boardEl.appendChild(el);
+        row.push(el);
+      }
+      cellEls.push(row);
+    }
+  }
+
+  function hideOverlays(){
+    winOverlay.hidden = true;
+    loseOverlay.hidden = true;
+    winOverlay.querySelectorAll('.confetti-piece').forEach(function(n){ n.remove(); });
+  }
+
+  function showWin(){
+    winOverlay.hidden = false;
+    spawnConfetti();
+  }
+
+  function showLose(){
+    loseOverlay.hidden = false;
+  }
+
+  function spawnConfetti(){
+    var colors = PALETTE;
+    var card = winOverlay.querySelector('.overlay-card');
+    for (var i = 0; i < 46; i++){
+      var piece = document.createElement('div');
+      piece.className = 'confetti-piece';
+      piece.style.left = Math.random() * 100 + '%';
+      piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+      piece.style.animationDuration = (1.2 + Math.random() * 1.4) + 's';
+      piece.style.animationDelay = (Math.random() * 0.5) + 's';
+      card.appendChild(piece);
+    }
+  }
+
+  function initGame(){
+    gameEnded = false;
+    conflictLock = false;
+    lives = 3;
+    catCount = 0;
+    hideOverlays();
+
+    var points = generateSolution();
+    regionOf = growRegions(points);
+    regionColors = shuffle(PALETTE.slice());
+
+    board = [];
+    for (var r = 0; r < N; r++){ board.push(new Array(N).fill('empty')); }
+
+    buildBoardDOM();
+    updateHud();
+  }
+
+  document.getElementById('newGameBtn').addEventListener('click', initGame);
+  document.getElementById('winNewGame').addEventListener('click', initGame);
+  document.getElementById('loseNewGame').addEventListener('click', initGame);
+
+  initGame();
+})();
+</script>
+</body>
+</html>
